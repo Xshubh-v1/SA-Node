@@ -2472,16 +2472,24 @@ uniform vec2 uTexel;
   var P0 = new T.Vector3(), P1 = new T.Vector3(), tmp = new T.Vector3();
   function pathAt(s, out) {
     var t = clamp(s, 0, 1), S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72));      // apparent width (fraction of screen) grows exponentially: far -> right in your face
-    var d = CAR_LEN / (2 * tanH * S);
-    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)), ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI);
+    var d = CAR_LEN / (2 * tanH * S), envelope = Math.sin(Math.PI * t);
+    // A playful, cinematic S-flight: the Anglia weaves through the night, then swoops into its close pass.
+    // Both curves fade at the endpoints so the scroll-driven entrance and exit stay perfectly aligned.
+    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)) + 0.22 * Math.sin(t * Math.PI * 2.8) * envelope + 0.045 * Math.sin(t * Math.PI * 5.6) * envelope;
+    var ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI) + 0.11 * Math.sin(t * Math.PI * 2.2 - 0.45) * envelope + 0.04 * Math.sin(t * Math.PI * 5.2) * envelope;
     out.set(nx * d * tanH, ny * d * tanV, -d); return out;
   }
-  var F = new T.Vector3(), UPV = new T.Vector3(), XL = new T.Vector3(), ZL = new T.Vector3(), M = new T.Matrix4(), Q = new T.Quaternion(), px = 0, py = 0, tpx = 0, tpy = 0;
+  var F = new T.Vector3(), UPV = new T.Vector3(), XL = new T.Vector3(), ZL = new T.Vector3(), M = new T.Matrix4(), Q = new T.Quaternion(), Pprev = new T.Vector3(), Pnext = new T.Vector3(), turnA = new T.Vector3(), turnB = new T.Vector3(), px = 0, py = 0, tpx = 0, tpy = 0;
   var cur = 0, tgt = 0, last = 0, visible = false, raf = 0, ready = false;
   function place() {
     if (!carReady) return; var s = clamp(cur, 0, 1);
     pathAt(s, P0); pathAt(Math.min(1, s + 0.012), P1); F.subVectors(P1, P0); if (F.lengthSq() < 1e-9) F.set(-0.3, 0, 1); F.normalize();
-    var roll = 0.22 * Math.sin(s * 6.2) - 0.16 + px * 0.12, pitch = py * 0.05;
+    // Read the curve's actual turning direction so the car banks INTO each magical swoop.
+    pathAt(Math.max(0, s - 0.014), Pprev); pathAt(Math.min(1, s + 0.014), Pnext);
+    turnA.subVectors(P0, Pprev).normalize(); turnB.subVectors(Pnext, P0).normalize();
+    var turn = turnA.z * turnB.x - turnA.x * turnB.z;
+    var bank = clamp(turn * 2.35, -0.58, 0.58);
+    var roll = -0.12 + 0.16 * Math.sin(s * 6.2) + bank + px * 0.10, pitch = py * 0.05;
     UPV.set(0, 1, 0).applyAxisAngle(F, roll); XL.copy(F).multiplyScalar(-1); ZL.crossVectors(XL, UPV).normalize(); UPV.crossVectors(ZL, XL).normalize();
     M.makeBasis(XL, UPV, ZL); Q.setFromRotationMatrix(M); car.quaternion.copy(Q); car.position.copy(P0);
     // headlight glow grows as it approaches
