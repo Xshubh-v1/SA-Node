@@ -2471,26 +2471,27 @@ uniform vec2 uTexel;
   }
   var P0 = new T.Vector3(), P1 = new T.Vector3(), tmp = new T.Vector3();
   function pathAt(s, out) {
-    var t = clamp(s, 0, 1), envelope = Math.sin(Math.PI * t);
+    var t = clamp(s, 0, 1), envelope = Math.pow(Math.sin(Math.PI * t), 2);
     // A richer enchanted flight: a gentle scale pulse, layered S-curves and a final sweeping exit arc.
     // Every flourish eases to zero at the ends, so scrolling forwards and backwards stays seamless.
-    var S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72)) * (1 + 0.035 * Math.sin(t * Math.PI * 5.2) * envelope);
+    var S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72)) * (1 + 0.022 * Math.sin(t * Math.PI * 5.2) * envelope);
     var d = CAR_LEN / (2 * tanH * S);
-    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)) - 0.95 * smooth((t - 0.78) / 0.22) + 0.26 * Math.sin(t * Math.PI * 3.0) * envelope + 0.055 * Math.sin(t * Math.PI * 6.0) * envelope + 0.028 * Math.sin(t * Math.PI * 10.5) * envelope;
-    var ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI) + 0.13 * Math.sin(t * Math.PI * 2.35 - 0.45) * envelope + 0.05 * Math.sin(t * Math.PI * 5.5) * envelope + 0.028 * Math.sin(t * Math.PI * 9.0) * envelope;
+    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)) - 0.95 * smooth((t - 0.78) / 0.22) + 0.26 * Math.sin(t * Math.PI * 3.0) * envelope + 0.018 * Math.sin(t * Math.PI * 6.0) * envelope + 0.006 * Math.sin(t * Math.PI * 10.5) * envelope;
+    var ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.012 * Math.sin(t * 6.0) * envelope + 0.05 * Math.sin(t * Math.PI) + 0.13 * Math.sin(t * Math.PI * 2.35 - 0.45) * envelope + 0.016 * Math.sin(t * Math.PI * 5.5) * envelope + 0.006 * Math.sin(t * Math.PI * 9.0) * envelope;
     out.set(nx * d * tanH, ny * d * tanV, -d); return out;
   }
   var F = new T.Vector3(), UPV = new T.Vector3(), XL = new T.Vector3(), ZL = new T.Vector3(), M = new T.Matrix4(), Q = new T.Quaternion(), Pprev = new T.Vector3(), Pnext = new T.Vector3(), turnA = new T.Vector3(), turnB = new T.Vector3(), px = 0, py = 0, tpx = 0, tpy = 0;
   var cur = 0, tgt = 0, last = 0, visible = false, raf = 0, ready = false;
   function place() {
     if (!carReady) return; var s = clamp(cur, 0, 1);
-    pathAt(s, P0); pathAt(Math.min(1, s + 0.012), P1); F.subVectors(P1, P0); if (F.lengthSq() < 1e-9) F.set(-0.3, 0, 1); F.normalize();
-    // Read the curve's actual turning direction so the car banks INTO each magical swoop.
-    pathAt(Math.max(0, s - 0.014), Pprev); pathAt(Math.min(1, s + 0.014), Pnext);
+    pathAt(s, P0); pathAt(Math.max(0, s - 0.018), Pprev); pathAt(Math.min(1, s + 0.018), Pnext);
+    // A centered tangent keeps the nose aligned with the flight path instead of snapping into each bend.
+    F.subVectors(Pnext, Pprev); if (F.lengthSq() < 1e-9) F.set(-0.3, 0, 1); F.normalize();
+    // Use a softer curvature response for a gradual, weightless bank through each sweeping turn.
     turnA.subVectors(P0, Pprev).normalize(); turnB.subVectors(Pnext, P0).normalize();
     var turn = turnA.z * turnB.x - turnA.x * turnB.z;
-    var bank = clamp(turn * 2.75, -0.72, 0.72);
-    var roll = -0.09 + 0.17 * Math.sin(s * 6.2) + bank + 0.045 * Math.sin(s * 19.5) * Math.sin(Math.PI * s) + px * 0.08, pitch = py * 0.05;
+    var bank = clamp(turn * 1.55, -0.34, 0.34);
+    var roll = -0.09 + 0.17 * Math.sin(s * 6.2) + bank + 0.012 * Math.sin(s * 12.0) * Math.sin(Math.PI * s) + px * 0.08, pitch = py * 0.05;
     UPV.set(0, 1, 0).applyAxisAngle(F, roll); XL.copy(F).multiplyScalar(-1); ZL.crossVectors(XL, UPV).normalize(); UPV.crossVectors(ZL, XL).normalize();
     M.makeBasis(XL, UPV, ZL); Q.setFromRotationMatrix(M); car.quaternion.copy(Q); car.position.copy(P0);
     // headlight glow grows as it approaches
@@ -2515,7 +2516,7 @@ uniform vec2 uTexel;
   function mapP(p) { return clamp((p - 0.05) / 0.90, 0, 1); }
   function frame(t) {
     raf = 0; now = t; var dt = Math.min(0.05, Math.max(0.001, (t - last) / 1000)); last = t;
-    tgt = mapP(progress()); cur += (tgt - cur) * (1 - Math.exp(-dt * (reduce ? 20 : 7.5))); if (Math.abs(tgt - cur) < 0.0002) cur = tgt;
+    tgt = mapP(progress()); cur += (tgt - cur) * (1 - Math.exp(-dt * (reduce ? 20 : 5.6))); if (Math.abs(tgt - cur) < 0.0002) cur = tgt;
     px += (tpx - px) * (1 - Math.exp(-dt * 5)); py += (tpy - py) * (1 - Math.exp(-dt * 5));
     cam.position.set(px * 0.35, py * 0.18, 0); cam.lookAt(px * 0.35, py * 0.18, -10);
     place(); if (carReady) R.render(scene, cam);
