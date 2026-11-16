@@ -2433,9 +2433,9 @@ uniform vec2 uTexel;
   function softTex() { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); var t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t; }
 
   /* ---------- magic-dust trail (deterministic along the path, so it scrubs both ways) ---------- */
-  var NP = reduce ? 90 : 260, PS = { delay: new Float32Array(NP), jit: new Float32Array(NP * 3), size: new Float32Array(NP), col: new Float32Array(NP * 3), ph: new Float32Array(NP) };
+  var NP = reduce ? 90 : 300, PS = { delay: new Float32Array(NP), jit: new Float32Array(NP * 3), size: new Float32Array(NP), col: new Float32Array(NP * 3), ph: new Float32Array(NP) };
   (function seed() { var r = 12345, rnd = function () { r = (r * 16807) % 2147483647; return r / 2147483647; }; var pal = [[1, .78, .36], [1, .92, .7], [.55, .85, 1], [1, 1, 1]];
-    for (var i = 0; i < NP; i++) { PS.delay[i] = Math.pow(rnd(), 1.25) * 0.16 + 0.004; PS.jit[i * 3] = rnd() * 2 - 1; PS.jit[i * 3 + 1] = rnd() * 2 - 1; PS.jit[i * 3 + 2] = rnd() * 2 - 1; PS.size[i] = 0.35 + rnd() * 0.9; var c = pal[(rnd() * 4) | 0]; PS.col[i * 3] = c[0]; PS.col[i * 3 + 1] = c[1]; PS.col[i * 3 + 2] = c[2]; PS.ph[i] = rnd() * 6.28; } })();
+    for (var i = 0; i < NP; i++) { PS.delay[i] = Math.pow(rnd(), 1.25) * 0.18 + 0.004; PS.jit[i * 3] = rnd() * 2 - 1; PS.jit[i * 3 + 1] = rnd() * 2 - 1; PS.jit[i * 3 + 2] = rnd() * 2 - 1; PS.size[i] = 0.35 + rnd() * 0.9; var c = pal[(rnd() * 4) | 0]; PS.col[i * 3] = c[0]; PS.col[i * 3 + 1] = c[1]; PS.col[i * 3 + 2] = c[2]; PS.ph[i] = rnd() * 6.28; } })();
   var pgeo = new T.BufferGeometry(), ppos = new Float32Array(NP * 3), palpha = new Float32Array(NP), psz = new Float32Array(NP);
   pgeo.setAttribute('position', new T.BufferAttribute(ppos, 3)); pgeo.setAttribute('aAlpha', new T.BufferAttribute(palpha, 1)); pgeo.setAttribute('aSize', new T.BufferAttribute(psz, 1)); pgeo.setAttribute('aCol', new T.BufferAttribute(PS.col, 3));
   var pmat = new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: { uScale: { value: 600 } },
@@ -2471,12 +2471,13 @@ uniform vec2 uTexel;
   }
   var P0 = new T.Vector3(), P1 = new T.Vector3(), tmp = new T.Vector3();
   function pathAt(s, out) {
-    var t = clamp(s, 0, 1), S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72));      // apparent width (fraction of screen) grows exponentially: far -> right in your face
-    var d = CAR_LEN / (2 * tanH * S), envelope = Math.sin(Math.PI * t);
-    // A playful, cinematic S-flight: the Anglia weaves through the night, then swoops into its close pass.
-    // Both curves fade at the endpoints so the scroll-driven entrance and exit stay perfectly aligned.
-    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)) + 0.22 * Math.sin(t * Math.PI * 2.8) * envelope + 0.045 * Math.sin(t * Math.PI * 5.6) * envelope;
-    var ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI) + 0.11 * Math.sin(t * Math.PI * 2.2 - 0.45) * envelope + 0.04 * Math.sin(t * Math.PI * 5.2) * envelope;
+    var t = clamp(s, 0, 1), envelope = Math.sin(Math.PI * t);
+    // A richer enchanted flight: a gentle scale pulse, layered S-curves and a final sweeping exit arc.
+    // Every flourish eases to zero at the ends, so scrolling forwards and backwards stays seamless.
+    var S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72)) * (1 + 0.035 * Math.sin(t * Math.PI * 5.2) * envelope);
+    var d = CAR_LEN / (2 * tanH * S);
+    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)) - 0.95 * smooth((t - 0.78) / 0.22) + 0.26 * Math.sin(t * Math.PI * 3.0) * envelope + 0.055 * Math.sin(t * Math.PI * 6.0) * envelope + 0.028 * Math.sin(t * Math.PI * 10.5) * envelope;
+    var ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI) + 0.13 * Math.sin(t * Math.PI * 2.35 - 0.45) * envelope + 0.05 * Math.sin(t * Math.PI * 5.5) * envelope + 0.028 * Math.sin(t * Math.PI * 9.0) * envelope;
     out.set(nx * d * tanH, ny * d * tanV, -d); return out;
   }
   var F = new T.Vector3(), UPV = new T.Vector3(), XL = new T.Vector3(), ZL = new T.Vector3(), M = new T.Matrix4(), Q = new T.Quaternion(), Pprev = new T.Vector3(), Pnext = new T.Vector3(), turnA = new T.Vector3(), turnB = new T.Vector3(), px = 0, py = 0, tpx = 0, tpy = 0;
@@ -2488,20 +2489,20 @@ uniform vec2 uTexel;
     pathAt(Math.max(0, s - 0.014), Pprev); pathAt(Math.min(1, s + 0.014), Pnext);
     turnA.subVectors(P0, Pprev).normalize(); turnB.subVectors(Pnext, P0).normalize();
     var turn = turnA.z * turnB.x - turnA.x * turnB.z;
-    var bank = clamp(turn * 2.35, -0.58, 0.58);
-    var roll = -0.12 + 0.16 * Math.sin(s * 6.2) + bank + px * 0.10, pitch = py * 0.05;
+    var bank = clamp(turn * 2.75, -0.72, 0.72);
+    var roll = -0.09 + 0.17 * Math.sin(s * 6.2) + bank + 0.045 * Math.sin(s * 19.5) * Math.sin(Math.PI * s) + px * 0.08, pitch = py * 0.05;
     UPV.set(0, 1, 0).applyAxisAngle(F, roll); XL.copy(F).multiplyScalar(-1); ZL.crossVectors(XL, UPV).normalize(); UPV.crossVectors(ZL, XL).normalize();
     M.makeBasis(XL, UPV, ZL); Q.setFromRotationMatrix(M); car.quaternion.copy(Q); car.position.copy(P0);
     // headlight glow grows as it approaches
     var near = smooth((s - 0.25) / 0.6);
     for (var i = 0; i < lamps.length; i++) lamps[i].material.opacity = lamps[i].userData.front ? 0.3 + 0.55 * near : 0.2 + 0.25 * near;
-    car.visible = s > 0.002 && s < 0.9995;
+    car.visible = s > 0.002 && s < 1;
     // dust
-    var gate = smooth((s - 0.03) / 0.08) * (1 - smooth((s - 0.93) / 0.07));
+    var gate = smooth((s - 0.025) / 0.075) * (1 - smooth((s - 0.88) / 0.12));
     for (var k = 0; k < NP; k++) {
-      var ds = PS.delay[k], sk = Math.max(0, s - ds); pathAt(sk, tmp); var dist = -tmp.z, spread = 0.1 + ds * dist * 0.55;
+      var ds = PS.delay[k], sk = Math.max(0, s - ds); pathAt(sk, tmp); var dist = -tmp.z, spread = 0.1 + ds * dist * 0.62;
       ppos[k * 3] = tmp.x + PS.jit[k * 3] * spread + F.x * -0.55; ppos[k * 3 + 1] = tmp.y + PS.jit[k * 3 + 1] * spread * 0.7 - 0.05; ppos[k * 3 + 2] = tmp.z + PS.jit[k * 3 + 2] * spread + F.z * -0.55;
-      var life = 1 - ds / 0.172, tw = 0.65 + 0.35 * Math.sin(now * 0.004 + PS.ph[k] * 3);
+      var life = 1 - ds / 0.192, tw = 0.65 + 0.35 * Math.sin(now * 0.004 + PS.ph[k] * 3);
       palpha[k] = clamp(life, 0, 1) * clamp(life * 1.4, 0, 1) * tw * gate * (s - ds > 0 ? 1 : 0) * 0.95; psz[k] = PS.size[k] * (0.6 + 0.8 * life);
     }
     pgeo.attributes.position.needsUpdate = true; pgeo.attributes.aAlpha.needsUpdate = true; pgeo.attributes.aSize.needsUpdate = true;
@@ -2511,7 +2512,7 @@ uniform vec2 uTexel;
   }
   var now = 0;
   function progress() { var r = sec.getBoundingClientRect(), total = r.height - H; if (total <= 1) return 0; return clamp(-r.top / total, 0, 1); }
-  function mapP(p) { return clamp((p - 0.05) / 0.82, 0, 1); }
+  function mapP(p) { return clamp((p - 0.05) / 0.90, 0, 1); }
   function frame(t) {
     raf = 0; now = t; var dt = Math.min(0.05, Math.max(0.001, (t - last) / 1000)); last = t;
     tgt = mapP(progress()); cur += (tgt - cur) * (1 - Math.exp(-dt * (reduce ? 20 : 7.5))); if (Math.abs(tgt - cur) < 0.0002) cur = tgt;
