@@ -552,7 +552,6 @@ html.earth-on #particle-canvas{opacity:0!important}
 .sa-glow{position:absolute;inset:-14%;border-radius:50%;background:radial-gradient(circle at 50% 46%,rgba(255,60,90,.45),rgba(255,60,90,.13) 42%,transparent 70%);opacity:calc((.2 + var(--b)*.62) * var(--g));filter:blur(12px);pointer-events:none}
 .sa-video{position:relative;display:block;width:100%;height:100%;object-fit:cover;mix-blend-mode:screen;filter:brightness(calc(1 + var(--b)*var(--g)*.14));-webkit-mask-image:radial-gradient(ellipse at 50% 50%,#000 60%,transparent 100%);mask-image:radial-gradient(ellipse at 50% 50%,#000 60%,transparent 100%)}
 </style>
-
 <link rel="dns-prefetch" href="//xshubh-v1.github.io">
 <link rel="preconnect" href="https://xshubh-v1.github.io" crossorigin>
 <link rel="prefetch" href="https://xshubh-v1.github.io/PetalCinema/" as="document" crossorigin>
@@ -1622,7 +1621,7 @@ const IMG = {'classmates-tushti':'data:image/webp;base64,UklGRrinAABXRUJQVlA4IKy
           if (btn.dataset.s === 'Alohomora') unlockBook(btn); else wrongSpell(btn);
         }
         function wrongSpell(btn) {
-          bkRoot.dataset.busy = '1'; btn.classList.add('bad', 'dim'); spellMsgEl.textContent = 'Galat spell \u2014 kitaab ne mana kar diya.'; spellMsgEl.className = 'spell-msg bad';
+          bkRoot.dataset.busy = '1'; btn.classList.add('bad', 'dim'); spellMsgEl.textContent = 'Galat jaadu \u2014 kitaab ne mana kar diya.'; spellMsgEl.className = 'spell-msg bad';
           if (!vib([55, 45, 55, 45, 130]) && typeof haptic === 'function') haptic(30);
           sfx('wrong'); bkShake.classList.remove('twitch'); bkRoot.classList.remove('rattle'); void bkShake.offsetWidth; bkShake.classList.add('twitch'); bkRoot.classList.add('rattle');
           setTimeout(() => { btn.classList.remove('bad'); bkShake.classList.remove('twitch'); bkRoot.classList.remove('rattle'); bkRoot.dataset.busy = '0'; }, 650);
@@ -2697,17 +2696,26 @@ uniform vec2 uTexel;
   }
   var P0 = new T.Vector3(), P1 = new T.Vector3(), tmp = new T.Vector3();
   function pathAt(s, out) {
-    var t = clamp(s, 0, 1), S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72));      // apparent width (fraction of screen) grows exponentially: far -> right in your face
+    var t = clamp(s, 0, 1), envelope = Math.sin(Math.PI * t);
+    // Enchanted flight path: layered S-curves and a final sweeping exit arc.
+    // The flourishes ease to zero at both ends for seamless forward/reverse scroll.
+    var S = 0.12 * Math.pow(1.85 / 0.12, Math.pow(t, 0.72)) * (1 + 0.035 * Math.sin(t * Math.PI * 5.2) * envelope);
     var d = CAR_LEN / (2 * tanH * S);
-    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)), ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI);
+    var nx = lerp(1.06, -2.3, Math.pow(t, 2.8)) - 0.95 * smooth((t - 0.78) / 0.22) + 0.26 * Math.sin(t * Math.PI * 3.0) * envelope + 0.055 * Math.sin(t * Math.PI * 6.0) * envelope + 0.028 * Math.sin(t * Math.PI * 10.5) * envelope;
+    var ny = lerp(0.0, -0.3, Math.pow(t, 1.3)) + 0.03 * Math.sin(t * 8.0) * (1 - t * 0.7) + 0.05 * Math.sin(t * Math.PI) + 0.13 * Math.sin(t * Math.PI * 2.35 - 0.45) * envelope + 0.05 * Math.sin(t * Math.PI * 5.5) * envelope + 0.028 * Math.sin(t * Math.PI * 9.0) * envelope;
     out.set(nx * d * tanH, ny * d * tanV, -d); return out;
   }
-  var F = new T.Vector3(), UPV = new T.Vector3(), XL = new T.Vector3(), ZL = new T.Vector3(), M = new T.Matrix4(), Q = new T.Quaternion(), px = 0, py = 0, tpx = 0, tpy = 0;
+  var F = new T.Vector3(), UPV = new T.Vector3(), XL = new T.Vector3(), ZL = new T.Vector3(), M = new T.Matrix4(), Q = new T.Quaternion(), Pprev = new T.Vector3(), Pnext = new T.Vector3(), turnA = new T.Vector3(), turnB = new T.Vector3(), px = 0, py = 0, tpx = 0, tpy = 0;
   var cur = 0, tgt = 0, last = 0, visible = false, raf = 0, ready = false;
   function place() {
     if (!carReady) return; var s = clamp(cur, 0, 1);
     pathAt(s, P0); pathAt(Math.min(1, s + 0.012), P1); F.subVectors(P1, P0); if (F.lengthSq() < 1e-9) F.set(-0.3, 0, 1); F.normalize();
-    var roll = 0.22 * Math.sin(s * 6.2) - 0.16 + px * 0.12, pitch = py * 0.05;
+    // Bank into the curve using its actual change in direction.
+    pathAt(Math.max(0, s - 0.014), Pprev); pathAt(Math.min(1, s + 0.014), Pnext);
+    turnA.subVectors(P0, Pprev).normalize(); turnB.subVectors(Pnext, P0).normalize();
+    var turn = turnA.z * turnB.x - turnA.x * turnB.z;
+    var bank = clamp(turn * 2.75, -0.72, 0.72);
+    var roll = -0.09 + 0.17 * Math.sin(s * 6.2) + bank + 0.045 * Math.sin(s * 19.5) * Math.sin(Math.PI * s) + px * 0.08, pitch = py * 0.05;
     UPV.set(0, 1, 0).applyAxisAngle(F, roll); XL.copy(F).multiplyScalar(-1); ZL.crossVectors(XL, UPV).normalize(); UPV.crossVectors(ZL, XL).normalize();
     M.makeBasis(XL, UPV, ZL); Q.setFromRotationMatrix(M); car.quaternion.copy(Q); car.position.copy(P0);
     // headlight glow grows as it approaches
