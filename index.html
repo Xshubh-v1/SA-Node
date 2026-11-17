@@ -454,8 +454,9 @@ header.fixed{z-index:45!important;background:rgba(4,5,7,.62);-webkit-backdrop-fi
 @keyframes bkGround{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.88)}}
 .scan-me.sm-on{pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .scan-me::before{content:"";position:absolute;inset:-12px -10px -12px -10px}
-.spell-bar{position:relative;z-index:25;width:100%;max-width:380px;margin-top:-8px;text-align:center;opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .7s ease,transform .7s ease}
+.spell-bar{position:relative;z-index:25;width:100%;max-width:380px;margin-top:-8px;text-align:center;opacity:1;transform:none;pointer-events:none}
 .spell-bar.show{opacity:1;transform:none;pointer-events:auto}
+.spell-bar:not(.show) .spell-q,.spell-bar:not(.show) .spell-list,.spell-bar:not(.show) .spell-msg{visibility:hidden}
 .spell-q{font:500 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#E5A93C;margin-bottom:8px}
 .spell-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .spl{position:relative;min-height:48px;padding:0 4px;border-radius:.85rem;border:1px solid rgba(229,169,60,.42);background:linear-gradient(180deg,rgba(26,21,12,.9),rgba(9,8,6,.94));color:#f3e3bd;font:700 11px/1.1 Syne,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,236,190,.14),0 8px 22px rgba(0,0,0,.55);transition:transform .15s,border-color .3s,color .3s,box-shadow .3s;-webkit-tap-highlight-color:transparent}
@@ -467,7 +468,7 @@ header.fixed{z-index:45!important;background:rgba(4,5,7,.62);-webkit-backdrop-fi
 @keyframes splBad{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
 .spell-msg{margin-top:8px;min-height:16px;font:400 12px/1.4 Outfit,sans-serif;color:#aeb4c0;transition:color .3s}
 .spell-msg.bad{color:#ff9d8f}.spell-msg.ok{color:#ffd98a}
-#spell-bar #bears{position:absolute;left:0;right:0;top:calc(100% + 2px);width:100%;height:112px;overflow:hidden;z-index:10;transform:none!important}
+#spell-bar #bears{position:absolute;left:50%;right:auto;top:calc(100% + 2px);width:100vw;height:112px;overflow:hidden;z-index:10;transform:translateX(-50%)!important;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.bk-float,.bk-ground{animation:none}.bk.unlocked .bk-glow{animation:none;opacity:.5}}
 
 .msg-card .font-body,.msg-card p{text-shadow:0 1px 12px rgba(0,0,0,.9),0 0 2px rgba(0,0,0,.6)}
